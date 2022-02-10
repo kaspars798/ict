@@ -7,17 +7,23 @@
             </div>
             <div v-else>
                 <div class="row mb-4" v-for="row in rows" :key="'row' + row">
-                    <div class="col" 
+                    <div class="col d-flex align-items-stretch" 
                     v-for="(product, column) in productsInRow(row)" 
                     :key="'row' + row + column">
                         <products-list-item 
-                            :itemName="product.name" 
-                            :itemDescription="product.description" />
+                            v-bind="product" />
                     </div>
                     <div class="col"
                     v-for="p in placeholdersInRow(row)"
                     :key="'placeholder' + row + p">
                     </div>
+                </div>
+                <div class="col-12 mt-4 pt-2">
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item"><a :class="['page-link', page==1?'text-secondary':'']" @click="prev" aria-label="Previous">Prev</a></li>
+                        <li class="page-item active"><a class="page-link" href="javascript:void(0)">{{ page }} of {{ pagination_meta.last_page }}</a></li>
+                        <li class="page-item"><a :class="['page-link', page==pagination_meta.last_page?'text-secondary':'']" @click="next" aria-label="Next">Next</a></li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -33,9 +39,12 @@ export default {
     },
     data() {
         return {
+            page: 1,
             products: null,
+            pagination_meta: null,
             loading: false,
-            columns: 3
+            columns: 3,
+            headers: null
         }
     },
     computed: {
@@ -49,31 +58,33 @@ export default {
         },
         placeholdersInRow(row) {
             return this.columns - this.productsInRow(row).length
+        },
+        getResults() {
+            this.axios
+                .get("/api/products?page=" + this.page, {headers: this.headers})
+                .then(response => {
+                    this.products = response.data.data
+                    this.pagination_meta = response.data.meta
+                    this.loading = false
+                });
+        },
+        prev() {
+            if(this.page > 1) {
+                this.page--
+                this.getResults()
+            }
+        },
+        next() {
+            if(this.page < this.pagination_meta.last_page) {
+                this.page++
+                this.getResults()
+            }
         }
     },
     created() {
         this.loading = true
-        setTimeout(() => {
-            this.products = [
-                {
-                    name: "Chips",
-                    description: "Crounchy tasty chips"
-                },
-                {
-                    name: "Milk",
-                    description: "Milk from country"
-                },
-                {
-                    name: "Bread",
-                    description: "Dark bread"
-                },
-                {
-                    name: "Spoon",
-                    description: "Silver spoon"
-                }
-            ]
-            this.loading = false
-        }, 2000)
+        this.headers = {Authorization: 'Bearer ' + localStorage.getItem('token'), Accept: 'application/json'}
+        this.getResults()
     }
 }
 </script>
